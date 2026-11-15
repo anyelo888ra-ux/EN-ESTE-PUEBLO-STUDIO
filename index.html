@@ -75,8 +75,15 @@ Alcalde> ¡Que comience la aventura!</textarea>
 <h2>Exportación</h2>
 <label>Formato</label><select id="aspect"><option value="9:16">Vertical 9:16 · Shorts / Reels</option><option value="16:9">Horizontal 16:9 · YouTube</option><option value="1:1">Cuadrado 1:1</option></select>
 <label>Resolución</label><select id="resolution"><option value="720">720p</option><option value="1080">1080p</option></select>
-<button class="primary" id="record" style="margin-top:12px">● Grabar vídeo</button><button id="downloadJson">Exportar datos JSON</button>
-<div class="status warn">El vídeo se exporta con título y subtítulos dibujados dentro de la imagen, en las dimensiones elegidas. Se guarda primero como WebM; usa «Convertir WebM a MP4» para convertirlo. Las voces del navegador todavía no se mezclan en el archivo.</div>
+<h3>Audio del vídeo</h3>
+<label> Música, narración o voz grabada (MP3 / WAV / OGG)</label><input id="audioFile" type="file" accept="audio/*">
+<div class="row"><div><label>Volumen de la pista</label><input id="audioVolume" type="range" min="0" max="1" step=".05" value=".8"></div><div style="flex:0 0 125px"><label>Repetir si termina</label><select id="audioLoop"><option value="yes">Sí</option><option value="no">No</option></select></div></div>
+<div class="small">Esta pista sí se incorpora al WebM. Puedes usar música propia, efectos o una narración grabada. La voz automática del navegador no se captura directamente.</div>
+<h3>Marca de agua</h3>
+<label>Texto de la marca</label><input id="watermarkText" maxlength="50" value="EN ESTE PUEBLO STUDIO">
+<div class="row"><div><label>Ubicación</label><select id="watermarkPosition"><option value="bottom-right">Abajo derecha</option><option value="bottom-left">Abajo izquierda</option><option value="top-right">Arriba derecha</option><option value="top-left">Arriba izquierda</option></select></div><div><label>Opacidad</label><input id="watermarkOpacity" type="range" min=".15" max="1" step=".05" value=".65"></div></div>
+<div class="row" style="margin-top:12px"><button class="primary" id="record">● Grabar vídeo</button><button id="downloadJson">Exportar datos JSON</button></div>
+<div class="status warn">El WebM incluye título, subtítulos y marca de agua. Si seleccionas un archivo de audio, también se mezcla en el vídeo. Después puedes convertirlo a MP4 con la herramienta de arriba.</div>
 <div class="small" style="margin-top:8px">Tamaños: vertical 720×1280 / 1080×1920 · horizontal 1280×720 / 1920×1080 · cuadrado 720×720 / 1080×1080.</div>
 </section>
 </aside>
@@ -173,7 +180,7 @@ async function lookupRoblox(){
  $('robloxIdLabel').textContent='User ID: '+id;const t=await fetch(`https://thumbnails.roblox.com/v1/users/avatar?userIds=${id}&size=150x150&format=Png&isCircular=false`);const tj=await t.json();if(tj.data?.[0]?.imageUrl)$('avatarThumb').src=tj.data[0].imageUrl;$('storyStatus').textContent='Avatar localizado. Se usa su imagen de referencia; el cuerpo 3D de la demo es un rig de bloques aproximado.';localStorage.setItem('robloxUserId',id)
  }catch(e){$('robloxResolved').textContent='No se pudo consultar';$('robloxIdLabel').textContent=e.message+' (revisa conexión/CORS)'}}
 function exportData(){save()}
-function record(){
+async function record(){
  if(!renderer||!window.MediaRecorder){alert('Tu navegador no admite grabación de vídeo.');return}
  if(!lines.length)build();
  const aspect=$('aspect').value,res=Number($('resolution').value);
@@ -201,6 +208,18 @@ function record(){
   const titleW=Math.min(width-32,ctx.measureText(title).width+36);
   ctx.fillStyle='rgba(7,16,29,.82)';ctx.fillRect(16*scale,16*scale,titleW,48*scale);
   ctx.fillStyle='#fff';ctx.textBaseline='middle';ctx.fillText(title,32*scale,40*scale, width-64*scale);
+  const wm=$('watermarkText').value.trim();
+  if(wm){
+   const opacity=Number($('watermarkOpacity').value);
+   ctx.save();ctx.globalAlpha=opacity;ctx.font='900 '+Math.max(13,Math.round(20*scale))+'px system-ui,sans-serif';
+   const pad=12*scale,ww=ctx.measureText(wm).width+pad*2,hh=34*scale,margin=22*scale;
+   const pos=$('watermarkPosition').value;
+   const left=pos.endsWith('left'),top=pos.startsWith('top');
+   const wx=left?margin:width-margin-ww,wy=top?margin:height-margin-hh;
+   ctx.fillStyle='rgba(0,0,0,.58)';ctx.fillRect(wx,wy,ww,hh);
+   ctx.fillStyle='#fff';ctx.textBaseline='middle';ctx.fillText(wm,wx+pad,wy+hh/2);
+   ctx.restore();
+  }
   const current=lines[Math.min(lineIndex,Math.max(0,lines.length-1))];
   if(current){
    const boxH=height*.17;ctx.fillStyle='rgba(0,0,0,.76)';ctx.fillRect(width*.04,height-boxH-18*scale,width*.92,boxH);
@@ -214,11 +233,32 @@ function record(){
  };
  paint();
  const stream=output.captureStream(30);chunks=[];
- const mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':(MediaRecorder.isTypeSupported('video/webm;codecs=vp8')?'video/webm;codecs=vp8':'video/webm');
- try{recorder=new MediaRecorder(stream,{mimeType:mime})}catch(e){drawing=false;renderer.setSize(oldWidth,oldHeight,false);camera.aspect=oldAspect;camera.updateProjectionMatrix();alert('No hay un códec WebM compatible: '+e.message);return}
+ let audioContext=null,audioElement=null,audioSource=null,audioGain=null,audioUrl=null;
+ const audioFile=$('audioFile').files?.[0];
+ if(audioFile){
+  try{
+   const AudioCtx=window.AudioContext||window.webkitAudioContext;
+   if(!AudioCtx)throw new Error('Este navegador no admite mezcla de audio.');
+   audioContext=new AudioCtx();await audioContext.resume();
+   audioUrl=URL.createObjectURL(audioFile);audioElement=new Audio(audioUrl);
+   audioElement.loop=$('audioLoop').value==='yes';
+   audioSource=audioContext.createMediaElementSource(audioElement);
+   audioGain=audioContext.createGain();audioGain.gain.value=Number($('audioVolume').value);
+   const destination=audioContext.createMediaStreamDestination();
+   audioSource.connect(audioGain);audioGain.connect(destination);
+   destination.stream.getAudioTracks().forEach(track=>stream.addTrack(track));
+  }catch(e){
+   drawing=false;stream.getTracks().forEach(t=>t.stop());renderer.setSize(oldWidth,oldHeight,false);camera.aspect=oldAspect;camera.updateProjectionMatrix();
+   if(audioUrl)URL.revokeObjectURL(audioUrl);if(audioContext)audioContext.close();
+   alert('No se pudo preparar el audio: '+e.message);return;
+  }
+ }
+ const mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')?'video/webm;codecs=vp9,opus':(MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')?'video/webm;codecs=vp8,opus':(MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm'));
+ try{recorder=new MediaRecorder(stream,{mimeType:mime})}catch(e){drawing=false;stream.getTracks().forEach(t=>t.stop());if(audioContext)audioContext.close();if(audioUrl)URL.revokeObjectURL(audioUrl);renderer.setSize(oldWidth,oldHeight,false);camera.aspect=oldAspect;camera.updateProjectionMatrix();alert('No hay un códec WebM compatible: '+e.message);return}
  recorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
  recorder.onstop=()=>{
-  drawing=false;stream.getTracks().forEach(t=>t.stop());
+  drawing=false;if(audioElement){audioElement.pause();audioElement.src=''}if(audioSource)audioSource.disconnect();if(audioGain)audioGain.disconnect();if(audioContext)audioContext.close();if(audioUrl)URL.revokeObjectURL(audioUrl);
+  stream.getTracks().forEach(t=>t.stop());
   renderer.setSize(oldWidth,oldHeight,false);camera.aspect=oldAspect;camera.updateProjectionMatrix();
   const blob=new Blob(chunks,{type:mime}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download='en-este-pueblo-'+aspect.replace(':','x')+'-'+res+'p.webm';a.click();
@@ -229,7 +269,8 @@ function record(){
  $('record').disabled=true;
  if(!playing)play();
  recorder.start(250);
- $('storyStatus').textContent='Grabando '+width+'×'+height+' con subtítulos integrados…';
+ if(audioElement){try{await audioElement.play()}catch(e){$('storyStatus').textContent='No se pudo iniciar la pista de audio: '+e.message}}
+ $('storyStatus').textContent='Grabando '+width+'×'+height+' · subtítulos · marca de agua'+(audioFile?' · audio incluido':' · sin pista de audio');
  const duration=Math.max(6500,lines.length*3200+1000);
  setTimeout(()=>{if(recorder?.state==='recording')recorder.stop();stop()},duration);
 }
