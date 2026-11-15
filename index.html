@@ -194,7 +194,7 @@ function showLine(){
  if(!lines.length){$('subtitle').textContent='No hay diálogos válidos.';return}
  const l=lines[Math.min(lineIndex,lines.length-1)];$('subtitle').textContent=(l.narrator?'NARRADOR':l.name)+': '+l.text;
  const c=cast.find(x=>x.name.toLowerCase()===l.name.toLowerCase());
- if(c){cameraTarget.set(c.group.position.x,1.5,c.group.position.z);if(/!!\s*SLIME\s*!!/i.test(l.text))setAction(c,'slime');else if(/!!\s*BOO\s*!!/i.test(l.text))setAction(c,'jump')}
+ if(c){cameraTarget.set(c.group.position.x,1.5,c.group.position.z);if(/[¡!]{1,2}\s*SLIME\s*[!¡]{1,2}/i.test(l.text))setAction(c,'slime');else if(/[¡!]{1,2}\s*BOO\s*[!¡]{1,2}/i.test(l.text))setAction(c,'jump')}
 }
 function speak(l,token){
  if(!('speechSynthesis'in window)){scheduleNext(token,estimateLineMs(l));return}
@@ -272,9 +272,8 @@ async function lookupRoblox(){
    id=match.id;display=match.displayName+' (@'+match.name+')';
   }
   $('robloxResolved').textContent=display;$('robloxIdLabel').textContent='User ID: '+id;
-  const t=await fetch('https://thumbnails.roblox.com/v1/users/avatar?userIds='+encodeURIComponent(id)+'&size=150x150&format=Png&isCircular=false',{mode:'cors'});
-  if(!t.ok)throw Error('Se encontró el usuario, pero Roblox no permitió cargar su miniatura.');
-  const tj=await t.json();if(tj.data?.[0]?.imageUrl)$('avatarThumb').src=tj.data[0].imageUrl;
+  // Cargar la miniatura como imagen directa evita una petición fetch sujeta a CORS.
+  $('avatarThumb').src='https://www.roblox.com/headshot-thumbnail/image?userId='+encodeURIComponent(id)+'&width=150&height=150&format=png';
   $('storyStatus').textContent='Usuario localizado. El personaje 3D sigue siendo un rig de bloques editable.';
   localStorage.setItem('robloxUserId',id);
  }catch(e){
