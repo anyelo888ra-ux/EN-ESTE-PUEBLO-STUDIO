@@ -101,7 +101,7 @@ Alcalde> ¡Que comience la aventura!</textarea>
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $=id=>document.getElementById(id);
-let renderer,scene,camera,world,hero,cast=[],lines=[],lineIndex=0,playing=false,timer=null,angle=0,zoom=18,recorder=null,chunks=[],customTarget=null;
+let renderer,scene,camera,world,hero,cast=[],lines=[],lineIndex=0,playing=false,timer=null,angle=0,zoom=18,recorder=null,chunks=[],customTarget=null,cameraTarget=new THREE.Vector3(0,1.5,0);
 const charSettings={};
 function init3D(){
  const canvas=$('scene');renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.setSize(canvas.clientWidth,canvas.clientHeight,false);
@@ -150,18 +150,19 @@ function syncCast(){
  hero=addCharacter(heroName,$('heroSkin').value,$('heroClothes').value,$('heroRig').value,true);
  const seen=new Set([heroName.toLowerCase(),'protagonista']);
  for(const l of lines){const name=l.name;if(name.toLowerCase()===heroName.toLowerCase()||name.toLowerCase().includes('protagonista'))continue;if(!seen.has(name.toLowerCase())){seen.add(name.toLowerCase());const c=charSettings[name]||{skin:'#e5b98c',clothes:'#bd4b55',rig:'R6'};addCharacter(name,c.skin,c.clothes,c.rig)}}
+ for(const [name,settings] of Object.entries(charSettings)){if(!seen.has(name.toLowerCase())){seen.add(name.toLowerCase());addCharacter(name,settings.skin||'#e5b98c',settings.clothes||'#bd4b55',settings.rig||'R6')}}
  renderCast();populateVoiceSelect();renderSceneCards();
 }
 function parseScript(){const raw=$('script').value.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);lines=[];for(const row of raw){const i=row.indexOf('>');if(i<1)continue;let name=row.slice(0,i).trim(),text=row.slice(i+1).trim();if(!text)continue;const isHero=/protagonista/i.test(name);if(isHero)name=$('heroName').value.trim()||'Protagonista';lines.push({name,text,isHero})}return lines}
 function renderCast(){$('cast').innerHTML='';for(const c of cast){const el=document.createElement('div');el.className='char';el.innerHTML=`<b></b><div class="small"></div><span class="pill"></span>`;el.querySelector('b').textContent=c.name;el.querySelector('.small').textContent=`${c.rig} · ${c.skin} · ${c.clothes}`;el.querySelector('.pill').textContent=c===hero?'PROTAGONISTA':'NPC';$('cast').append(el)}}
 function renderSceneCards(){$('scenes').innerHTML='';const chunksOf=lines.reduce((a,l,i)=>{if(i%3===0)a.push([]);a[a.length-1].push(l);return a},[]);chunksOf.forEach((group,i)=>{const d=document.createElement('div');d.className='char';d.innerHTML=`<b>Escena ${i+1}</b><div class="small"></div>`;d.querySelector('.small').textContent=group.map(x=>x.name).join(', ');$('scenes').append(d)})}
 function build(){parseScript();syncCast();$('sceneTitle').textContent='EN ESTE PUEBLO '+$('theme').value.toUpperCase();$('previewStatus').textContent=`${$('townName').value} · ${cast.length} personajes · ${lines.length} diálogos · ${Math.ceil(lines.length/3)} escenas`; $('storyStatus').textContent='Pueblo y reparto generados. Pulsa Reproducir.';lineIndex=0;showLine()}
-function showLine(){if(!lines.length){$('subtitle').textContent='No hay diálogos válidos.';return}const l=lines[Math.min(lineIndex,lines.length-1)];$('subtitle').textContent=l.name+': '+l.text;const c=cast.find(x=>x.name===l.name);if(c){cast.forEach(x=>x.group.position.x=x===c?0:(Math.random()*12-6));camera.lookAt(c.group.position.x,1.5,c.group.position.z)}}
+function showLine(){if(!lines.length){$('subtitle').textContent='No hay diálogos válidos.';return}const l=lines[Math.min(lineIndex,lines.length-1)];$('subtitle').textContent=l.name+': '+l.text;const c=cast.find(x=>x.name===l.name);if(c){cast.forEach(x=>{if(x.group)x.group.position.x=x===c?0:(Math.random()*12-6)});cameraTarget.set(c.group.position.x,1.5,c.group.position.z)}}
 function speak(l){const c=cast.find(x=>x.name===l.name);if(!('speechSynthesis'in window)||!c||c.voice==='fish')return;const u=new SpeechSynthesisUtterance(l.text);u.lang='es-ES';u.rate=Number($('rate').value);const voices=speechSynthesis.getVoices();const v=voices.find(x=>x.name===c.browserVoice)||voices.find(x=>x.lang.toLowerCase().startsWith('es'));if(v)u.voice=v;speechSynthesis.speak(u)}
 function next(){if(lineIndex<lines.length-1){lineIndex++;showLine();speak(lines[lineIndex])}else stop()}
 function play(){if(!lines.length)build();stop();playing=true;lineIndex=0;showLine();speak(lines[0]);timer=setInterval(()=>{if(!playing)return;next()},3200)}
 function stop(){playing=false;if(timer)clearInterval(timer);timer=null;if('speechSynthesis'in window)speechSynthesis.cancel()}
-function animate(){requestAnimationFrame(animate);if(camera){camera.position.x=Math.sin(angle)*zoom;camera.position.z=Math.cos(angle)*zoom;camera.position.y=zoom*.56;camera.lookAt(0,1.5,0)}renderer.render(scene,camera)}
+function animate(){requestAnimationFrame(animate);if(camera){camera.position.x=cameraTarget.x+Math.sin(angle)*zoom;camera.position.z=cameraTarget.z+Math.cos(angle)*zoom;camera.position.y=cameraTarget.y+zoom*.56;camera.lookAt(cameraTarget)}renderer.render(scene,camera)}
 function populateVoices(){const s=$('browserVoice');s.innerHTML='';const vs=speechSynthesis?.getVoices?.()||[];vs.filter(v=>v.lang.toLowerCase().startsWith('es')).concat(vs.filter(v=>!v.lang.toLowerCase().startsWith('es'))).forEach(v=>{const o=document.createElement('option');o.value=v.name;o.textContent=`${v.name} (${v.lang})`;s.append(o)})}
 function populateVoiceSelect(){const s=$('voiceChar');s.innerHTML='';cast.forEach(c=>{const o=document.createElement('option');o.value=c.name;o.textContent=c.name;s.append(o)})}
 function selectedChar(){return cast.find(c=>c.name===$('voiceChar').value)}
@@ -238,7 +239,7 @@ $('lookup').onclick=lookupRoblox;$('addNpc').onclick=()=>{const n=$('newName').v
 $('voiceEngine').onchange=()=>{$('browserVoiceBox').classList.toggle('hidden',$('voiceEngine').value!=='browser');$('fishBox').classList.toggle('hidden',$('voiceEngine').value!=='fish')};
 $('voiceChar').onchange=()=>{const c=selectedChar();if(c){$('voiceEngine').value=c.voice;$('fishVoiceId').value=c.voiceId;$('browserVoice').value=c.browserVoice;$('voiceEngine').dispatchEvent(new Event('change'))}};
 $('testVoice').onclick=()=>{const c=selectedChar();if(!c)return;c.voice=$('voiceEngine').value;c.voiceId=$('fishVoiceId').value;c.browserVoice=$('browserVoice').value;if(c.voice==='fish'){alert('Fish Audio está seleccionado. En esta demo se guarda el Voice ID, pero la llamada real requiere un backend seguro.');return}speak({name:c.name,text:'Hola, esta es mi voz de personaje.'})};
-$('camLeft').onclick=()=>angle-=.25;$('camRight').onclick=()=>angle+=.25;$('zoomIn').onclick=()=>zoom=Math.max(8,zoom-2);$('zoomOut').onclick=()=>zoom=Math.min(35,zoom+2);$('resetCam').onclick=()=>{angle=0;zoom=18};
+$('camLeft').onclick=()=>angle-=.25;$('camRight').onclick=()=>angle+=.25;$('zoomIn').onclick=()=>zoom=Math.max(8,zoom-2);$('zoomOut').onclick=()=>zoom=Math.min(35,zoom+2);$('resetCam').onclick=()=>{angle=0;zoom=18;cameraTarget.set(0,1.5,0)};
 $('record').onclick=record;$('downloadJson').onclick=exportData;
 $('heroName').onchange=()=>{if(lines.length)build()};$('theme').oninput=()=>$('sceneTitle').textContent='EN ESTE PUEBLO '+$('theme').value.toUpperCase();
 $('modelFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const c=selectedChar()||hero;if(!c){alert('Primero genera el reparto.');return}try{const url=URL.createObjectURL(f);const loader=new GLTFLoader();loader.load(url,gltf=>{c.group.clear();c.group.add(gltf.scene);gltf.scene.scale.setScalar(2);$('storyStatus').textContent='Modelo 3D cargado para '+c.name;URL.revokeObjectURL(url)},undefined,err=>alert('No se pudo cargar el modelo: '+err.message))}catch(err){alert(err.message)}};
