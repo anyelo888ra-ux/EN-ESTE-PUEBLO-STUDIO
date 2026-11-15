@@ -145,7 +145,7 @@ function box(parent,x,y,z,sx,sy,sz,color){
 }
 function buildTown(){
  world.clear();box(world,0,-.35,0,70,.5,70,'#70b96b');
- for(let i=0;i<8;i++){let x=(i%4)*13-19,z=Math.floor(i/4)*15-8;box(world,x,1.5,z,7,3,6,['#e8b76b','#d98f9b','#8bb8e8','#a8d38a'][i%4]);box(world,x,3.5,z,8,1,7,'#754c43');box(world,x,1,z+3.06,1.5,2,.15,'#4a3028');box(world,x-2,1.7,z+3.1,1.2,1,'#aee7ff');box(world,x+2,1.7,z+3.1,1.2,1,'#aee7ff')}
+ for(let i=0;i<8;i++){let x=(i%4)*13-19,z=Math.floor(i/4)*15-8;box(world,x,1.5,z,7,3,6,['#e8b76b','#d98f9b','#8bb8e8','#a8d38a'][i%4]);box(world,x,3.5,z,8,1,7,'#754c43');box(world,x,1,z+3.06,1.5,2,.15,'#4a3028');box(world,x-2,1.7,z+3.1,1.2,1,.15,'#aee7ff');box(world,x+2,1.7,z+3.1,1.2,1,.15,'#aee7ff')}
  box(world,0,-.05,0,4,.12,60,'#b9b1a0');box(world,0,-.04,0,60,.12,4,'#b9b1a0');
  for(let i=0;i<12;i++){const x=Math.sin(i*4)*25,z=Math.cos(i*7)*24;box(world,x,1,z,.6,2,.6,'#79543b');const crown=new THREE.Mesh(new THREE.BoxGeometry(2.4,2.2,2.4),mat('#34894e'));crown.position.set(x,2.8,z);world.add(crown)}
  const sign=box(world,0,2,-12,6,2,.3,'#4d365f');sign.name='sign';
@@ -220,7 +220,7 @@ function estimateLineMs(l){return Math.max(1200,Math.min(9000,(l.text.split(/\s+
 function scheduleNext(token,delay){clearTimeout(timer);timer=setTimeout(()=>{if(!playing||token!==playToken)return;if(lineIndex<lines.length-1){lineIndex++;showLine();speak(lines[lineIndex],token)}else stop()},delay)}
 function next(){if(lineIndex<lines.length-1){if('speechSynthesis'in window)speechSynthesis.cancel();lineIndex++;showLine();const token=playToken;if(playing)speak(lines[lineIndex],token)}else stop()}
 function play(){if(!lines.length)build();stop();playing=true;playToken++;const token=playToken;lineIndex=0;showLine();speak(lines[0],token)}
-function stop(){playing=false;playToken++;if(timer)clearTimeout(timer);timer=null;if('speechSynthesis'in window)speechSynthesis.cancel()}
+function stop(){playing=false;playToken++;if(timer)clearTimeout(timer);timer=null;if('speechSynthesis'in window)speechSynthesis.cancel();if(recorder&&recorder.state==='recording'){try{recorder.stop()}catch(e){console.warn('No se pudo detener la grabación:',e)}}}
 function animate(){
  requestAnimationFrame(animate);
  const t=performance.now()/1000;
@@ -370,6 +370,7 @@ async function record(){
  try{recorder=new MediaRecorder(stream,{mimeType:mime})}catch(e){drawing=false;stream.getTracks().forEach(t=>t.stop());if(audioContext)audioContext.close();if(audioUrl)URL.revokeObjectURL(audioUrl);renderer.setSize(oldWidth,oldHeight,false);camera.aspect=oldAspect;camera.updateProjectionMatrix();alert('No hay un códec WebM compatible: '+e.message);return}
  recorder.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
  recorder.onstop=()=>{
+  clearTimeout(window.__puebloRecordWatchdog);
   drawing=false;if(audioElement){audioElement.pause();audioElement.src=''}if(audioSource)audioSource.disconnect();if(audioGain)audioGain.disconnect();if(audioContext)audioContext.close();if(audioUrl)URL.revokeObjectURL(audioUrl);
   stream.getTracks().forEach(t=>t.stop());
   renderer.setSize(oldWidth,oldHeight,false);camera.aspect=oldAspect;camera.updateProjectionMatrix();
@@ -377,15 +378,18 @@ async function record(){
   a.href=url;a.download='en-este-pueblo-'+aspect.replace(':','x')+'-'+res+'p.webm';a.click();
   setTimeout(()=>URL.revokeObjectURL(url),60000);
   $('storyStatus').textContent='Vídeo WebM exportado con subtítulos · '+width+'×'+height+'. Ya puedes convertirlo a MP4.';
-  $('record').disabled=false;
+  $('record').disabled=false;$('record').textContent='● Grabar vídeo';
  };
- $('record').disabled=true;
+ $('record').disabled=false;$('record').textContent='■ Detener y descargar';
  if(!playing)play();
  recorder.start(250);
  if(audioElement){try{await audioElement.play()}catch(e){$('storyStatus').textContent='No se pudo iniciar la pista de audio: '+e.message}}
  $('storyStatus').textContent='Grabando '+width+'×'+height+' · subtítulos · marca de agua'+(audioFile?' · audio incluido':' · sin pista de audio');
- const duration=Math.max(6500,lines.reduce((sum,l)=>sum+estimateLineMs(l)+350,0)+1000);
- setTimeout(()=>{if(recorder?.state==='recording')recorder.stop();stop()},duration);
+ // La reproducción controla el final de la grabación: al terminar el último diálogo,
+ // scheduleNext() llama a stop(), que detiene MediaRecorder y descarga el archivo.
+ // Límite de seguridad por si el motor de voz queda bloqueado.
+ clearTimeout(window.__puebloRecordWatchdog);
+ window.__puebloRecordWatchdog=setTimeout(()=>{if(recorder?.state==='recording'){console.warn('Límite de seguridad de grabación alcanzado.');stop()}},10*60*1000);
 }
 document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));['story','people','voice','export'].forEach(t=>$('tab-'+t).classList.toggle('hidden',t!==b.dataset.tab))});
 $('build').onclick=build;$('play').onclick=play;$('stop').onclick=stop;$('nextLine').onclick=next;$('saveProject').onclick=save;$('loadProject').onclick=()=>$('projectFile').click();$('projectFile').onchange=async e=>{const f=e.target.files[0];if(f)load(JSON.parse(await f.text()))};
@@ -394,7 +398,7 @@ $('voiceEngine').onchange=()=>{$('browserVoiceBox').classList.toggle('hidden',$(
 $('voiceChar').onchange=()=>{const c=selectedChar();if(c){$('voiceEngine').value=c.voice;$('fishVoiceId').value=c.voiceId;$('browserVoice').value=c.browserVoice;$('voiceEngine').dispatchEvent(new Event('change'))}};
 $('testVoice').onclick=()=>{const c=selectedChar();if(!c)return;c.voice=$('voiceEngine').value;c.voiceId=$('fishVoiceId').value;c.browserVoice=$('browserVoice').value;if(c.voice==='fish'){alert('Fish Audio está seleccionado. En esta demo se guarda el Voice ID, pero la llamada real requiere un backend seguro.');return}speak({name:c.name,text:'Hola, esta es mi voz de personaje.'})};
 $('camLeft').onclick=()=>angle-=.25;$('camRight').onclick=()=>angle+=.25;$('zoomIn').onclick=()=>zoom=Math.max(8,zoom-2);$('zoomOut').onclick=()=>zoom=Math.min(35,zoom+2);$('resetCam').onclick=()=>{angle=0;zoom=18;cameraTarget.set(0,1.5,0)};
-$('record').onclick=record;$('downloadJson').onclick=exportData;
+$('record').onclick=()=>{if(recorder&&recorder.state==='recording'){stop()}else record()};$('downloadJson').onclick=exportData;
 $('heroName').onchange=()=>{if(lines.length)build()};$('theme').oninput=()=>$('sceneTitle').textContent='EN ESTE PUEBLO '+$('theme').value.toUpperCase();
 $('modelFile').onchange=async e=>{const f=e.target.files[0];if(!f)return;const c=selectedChar()||hero;if(!c){alert('Primero genera el reparto.');return}try{const url=URL.createObjectURL(f);const loader=new GLTFLoader();loader.load(url,gltf=>{c.group.clear();c.group.add(gltf.scene);gltf.scene.scale.setScalar(2);$('storyStatus').textContent='Modelo 3D cargado para '+c.name;URL.revokeObjectURL(url)},undefined,err=>alert('No se pudo cargar el modelo: '+err.message))}catch(err){alert(err.message)}};
 if('speechSynthesis'in window){populateVoices();speechSynthesis.onvoiceschanged=populateVoices}
