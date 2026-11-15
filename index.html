@@ -87,9 +87,17 @@ Alcalde> ¡Que comience la aventura!</textarea>
 <div class="status" id="previewStatus">El pueblo se construirá según el tema y los personajes del guion.</div>
 </section>
 </main>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-import {GLTFLoader} from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/loaders/GLTFLoader.js';
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const $=id=>document.getElementById(id);
 let renderer,scene,camera,world,hero,cast=[],lines=[],lineIndex=0,playing=false,timer=null,angle=0,zoom=18,recorder=null,chunks=[],customTarget=null;
 const charSettings={};
