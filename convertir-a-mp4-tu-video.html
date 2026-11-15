@@ -50,7 +50,7 @@ async function loadEngine(){
  ffmpeg=new FFmpeg();
  ffmpeg.on('log',({message})=>{if(message) $('status').textContent='Procesando vídeo…\n'+message.slice(-220)});
  ffmpeg.on('progress',({progress})=>{$('progress').hidden=false;$('progress').value=Math.max(0,Math.min(100,Math.round(progress*100)))});
- const base='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
+ const base='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm';
  await ffmpeg.load({
   // El worker principal se sirve desde GitHub Pages (mismo origen).
   // Ese archivo puente importa el worker oficial de FFmpeg desde jsDelivr.
