@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080d18">
+<title>Convertir WebM a MP4 — EN ESTE PUEBLO STUDIO</title>
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<style>
+:root{color-scheme:dark;--bg:#080d18;--panel:#111a2b;--line:#263754;--text:#eef4ff;--muted:#9aabc6;--cyan:#54d7ef;--purple:#a78bfa;--green:#70e1a1}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 15% 0,#17264b 0,transparent 35%),var(--bg);color:var(--text);font:15px/1.5 system-ui,Segoe UI,Arial}
+header{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.brand{font-weight:900;letter-spacing:.07em}.brand span{color:var(--cyan)}a{color:var(--cyan);text-decoration:none}
+main{max-width:850px;margin:38px auto;padding:0 18px}.panel{background:linear-gradient(160deg,var(--panel),#0d1524);border:1px solid var(--line);border-radius:18px;padding:22px}
+h1{font-size:clamp(24px,5vw,36px);margin:0 0 8px}p,.muted{color:var(--muted)}label{display:block;margin:14px 0 7px;color:var(--muted);font-size:13px}
+input[type=file]{width:100%;padding:14px;border:1px dashed #49658c;border-radius:12px;background:#091221;color:var(--text)}
+button{border:0;border-radius:10px;padding:12px 16px;background:linear-gradient(100deg,#087f9a,#5750a9);color:white;font-weight:750;cursor:pointer}button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}.status{margin-top:16px;padding:12px;border:1px solid var(--line);border-radius:10px;background:#091221;color:var(--muted);white-space:pre-wrap}.status.ok{color:var(--green)}.status.warn{color:#ffd27a}
+progress{width:100%;height:13px;margin-top:12px;accent-color:var(--cyan)}video{display:block;width:100%;max-height:420px;margin-top:16px;background:#000;border-radius:12px}.small{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<header><div><div class="brand">EN ESTE PUEBLO <span>STUDIO</span></div><div class="small">Herramienta local de conversión</div></div><a href="./index.html">← Volver al editor</a></header>
+<main><section class="panel">
+<h1>Convertir WebM a MP4</h1>
+<p>Selecciona el vídeo WebM que exportaste del editor. La conversión se realiza en tu navegador; el archivo no se carga a un servidor.</p>
+<label for="videoFile">Tu vídeo WebM</label>
+<input id="videoFile" type="file" accept="video/webm,.webm">
+<div class="small" id="fileInfo">Selecciona un archivo para comenzar.</div>
+<div class="row"><button id="convert" disabled>Convertir a MP4</button><button id="download" disabled>Descargar MP4</button></div>
+<progress id="progress" value="0" max="100" hidden></progress>
+<div id="status" class="status">Primero selecciona tu archivo WebM.</div>
+<video id="preview" controls playsinline hidden></video>
+<p class="small">La primera conversión descarga el motor FFmpeg WebAssembly desde jsDelivr y puede tardar. Los vídeos largos o muy pesados necesitan bastante memoria RAM. No cierres esta pestaña mientras convierte.</p>
+<div class="status warn">Consejo: prueba primero con un vídeo corto. El MP4 se codifica en H.264 y usa audio AAC cuando el WebM contiene audio.</div>
+</section></main>
+<script type="module">
+import { FFmpeg } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/esm/index.js';
+import { fetchFile, toBlobURL } from 'https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.2/dist/esm/index.js';
+const $=id=>document.getElementById(id);
+let ffmpeg=null,loaded=false,selected=null,mp4Blob=null,previewUrl=null;
+const setStatus=(message,type='')=>{$('status').textContent=message;$('status').className='status '+type};
+$('videoFile').addEventListener('change',()=>{
+ selected=$('videoFile').files?.[0]||null;mp4Blob=null;$('download').disabled=true;$('preview').hidden=true;
+ $('convert').disabled=!selected;
+ $('fileInfo').textContent=selected?selected.name+' · '+(selected.size/1024/1024).toFixed(2)+' MB':'Selecciona un archivo para comenzar.';
+ setStatus(selected?'Archivo listo. Pulsa «Convertir a MP4».':'Primero selecciona tu archivo WebM.');
+});
+async function loadEngine(){
+ if(loaded)return;
+ setStatus('Descargando el motor FFmpeg… La primera vez puede tardar.');
+ ffmpeg=new FFmpeg();
+ ffmpeg.on('log',({message})=>{if(message) $('status').textContent='Procesando vídeo…\n'+message.slice(-220)});
+ ffmpeg.on('progress',({progress})=>{$('progress').hidden=false;$('progress').value=Math.max(0,Math.min(100,Math.round(progress*100)))});
+ const base='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd';
+ await ffmpeg.load({
+  coreURL:await toBlobURL(base+'/ffmpeg-core.js','text/javascript'),
+  wasmURL:await toBlobURL(base+'/ffmpeg-core.wasm','application/wasm')
+ });
+ loaded=true;
+}
+$('convert').addEventListener('click',async()=>{
+ if(!selected)return;
+ $('convert').disabled=true;$('download').disabled=true;$('progress').hidden=false;$('progress').value=0;
+ const inputName='source-'+Date.now()+'.webm',outputName='en-este-pueblo.mp4';
+ try{
+  await loadEngine();
+  setStatus('Preparando el archivo para convertir…');
+  await ffmpeg.writeFile(inputName,await fetchFile(selected));
+  setStatus('Convirtiendo a MP4 H.264… Esto puede tardar según el tamaño y la potencia de tu PC.');
+  let result=await ffmpeg.exec(['-i',inputName,'-map','0:v:0','-map','0:a?','-c:v','libx264','-preset','ultrafast','-crf','23','-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-movflags','+faststart',outputName]);
+  if(result!==0)throw new Error('FFmpeg no pudo completar la conversión (código '+result+').');
+  const data=await ffmpeg.readFile(outputName);
+  mp4Blob=new Blob([data.buffer],{type:'video/mp4'});
+  if(previewUrl)URL.revokeObjectURL(previewUrl);
+  previewUrl=URL.createObjectURL(mp4Blob);$('preview').src=previewUrl;$('preview').hidden=false;
+  $('download').disabled=false;$('progress').value=100;
+  setStatus('¡Conversión completada! MP4 listo · '+(mp4Blob.size/1024/1024).toFixed(2)+' MB. Pulsa Descargar MP4.','ok');
+  try{await ffmpeg.deleteFile(inputName);await ffmpeg.deleteFile(outputName)}catch{}
+ }catch(error){console.error(error);setStatus('No se pudo convertir: '+(error?.message||error)+'\nPrueba con un WebM más corto o de menor resolución.','warn')}
+ finally{$('convert').disabled=!selected}
+});
+$('download').addEventListener('click',()=>{
+ if(!mp4Blob)return;const url=URL.createObjectURL(mp4Blob),a=document.createElement('a');
+ a.href=url;a.download='en-este-pueblo.mp4';a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
+});
+</script>
+</body></html>
