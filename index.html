@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>EN ESTE PUEBLO STUDIO — v1.0</title>
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <style>
 :root{color-scheme:dark;--bg:#080d18;--panel:#111a2b;--panel2:#17233a;--line:#263754;--text:#eef4ff;--muted:#9aabc6;--cyan:#54d7ef;--purple:#a78bfa;--green:#70e1a1}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 15% 0,#17264b 0,transparent 35%),var(--bg);color:var(--text);font:14px/1.45 system-ui,Segoe UI,Arial}
@@ -109,8 +110,21 @@ function init3D(){
  world=new THREE.Group();scene.add(world);buildTown();window.addEventListener('resize',resize);animate();
 }
 function resize(){const c=$('scene');if(!renderer)return;renderer.setSize(c.clientWidth,c.clientHeight,false);camera.aspect=c.clientWidth/c.clientHeight;camera.updateProjectionMatrix()}
-function mat(color){return new THREE.MeshStandardMaterial({color,roughness:.85})}
-function box(parent,x,y,z,sx,sy,sz,color){const m=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),mat(color));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+function mat(color){return new THREE.MeshStandardMaterial({color:color??'#ff00ff',roughness:.85})}
+function box(parent,x,y,z,sx,sy,sz,color){
+ const values={x,y,z,sx,sy,sz};
+ const invalid=Object.entries(values).filter(([,v])=>!Number.isFinite(Number(v)));
+ if(invalid.length||sx<=0||sy<=0||sz<=0){
+  console.warn('EN ESTE PUEBLO: se omitió una pieza 3D con medidas inválidas.',values);
+  return null;
+ }
+ if(color===undefined||color===null||color===''){
+  console.warn('EN ESTE PUEBLO: pieza sin color; se aplicó magenta de diagnóstico.',values);
+  color='#ff00ff';
+ }
+ const m=new THREE.Mesh(new THREE.BoxGeometry(Number(sx),Number(sy),Number(sz)),mat(color));
+ m.position.set(Number(x),Number(y),Number(z));m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
+}
 function buildTown(){
  world.clear();box(world,0,-.35,0,70,.5,70,'#70b96b');
  for(let i=0;i<8;i++){let x=(i%4)*13-19,z=Math.floor(i/4)*15-8;box(world,x,1.5,z,7,3,6,['#e8b76b','#d98f9b','#8bb8e8','#a8d38a'][i%4]);box(world,x,3.5,z,8,1,7,'#754c43');box(world,x,1,z+3.06,1.5,2,.15,'#4a3028');box(world,x-2,1.7,z+3.1,1.2,1,'#aee7ff');box(world,x+2,1.7,z+3.1,1.2,1,'#aee7ff')}
