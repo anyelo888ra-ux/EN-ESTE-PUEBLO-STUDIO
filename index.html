@@ -194,7 +194,17 @@ function showLine(){
  if(!lines.length){$('subtitle').textContent='No hay diálogos válidos.';return}
  const l=lines[Math.min(lineIndex,lines.length-1)];$('subtitle').textContent=(l.narrator?'NARRADOR':l.name)+': '+l.text;
  const c=cast.find(x=>x.name.toLowerCase()===l.name.toLowerCase());
- if(c){cameraTarget.set(c.group.position.x,1.5,c.group.position.z);if(/[¡!]{1,2}\s*SLIME\s*[!¡]{1,2}/i.test(l.text))setAction(c,'slime');else if(/[¡!]{1,2}\s*BOO\s*[!¡]{1,2}/i.test(l.text))setAction(c,'jump')}
+ if(c){
+  cameraTarget.set(c.group.position.x,1.5,c.group.position.z);
+  if(/[¡!]{1,2}\s*SLIME\s*[!¡]{1,2}/i.test(l.text))setAction(c,'slime');
+  else if(/[¡!]{1,2}\s*BOO\s*[!¡]{1,2}/i.test(l.text))setAction(c,'jump');
+  else if(/\b(caminar|camina|caminando)\b/i.test(l.text))setAction(c,'walk');
+  else if(/\b(correr|corre|corriendo)\b/i.test(l.text))setAction(c,'run');
+  else if(/\b(bailar|baila|bailando)\b/i.test(l.text))setAction(c,'dance');
+  else if(/\b(saltar|salta|saltando)\b/i.test(l.text))setAction(c,'jump');
+  else if(/\b(asustado|asustada|miedo|susto)\b/i.test(l.text))setAction(c,'scared');
+  else if(!c.group.userData.slime)setAction(c,'idle');
+ }
 }
 function speak(l,token){
  if(!('speechSynthesis'in window)){scheduleNext(token,estimateLineMs(l));return}
@@ -235,8 +245,8 @@ function setAction(c,action){if(!c?.group)return;c.group.userData.action=action;
 function applyLocation(){
  if(!scene||!world)return;const loc=$('location')?.value||'town-day';const night=loc.endsWith('night');const inside=loc.startsWith('house');
  const sky=night?'#10172e':inside?'#b6a58c':'#9bd0ed';scene.background=new THREE.Color(sky);scene.fog=new THREE.Fog(sky,inside?22:night?35:65,inside?55:night?100:120);
- if(sunLight){sunLight.intensity=night?.35:inside?1.1:2.3;sunLight.color.set(night?'#7894d8':'#ffffff')}
- if(ambientLight)ambientLight.intensity=night?.55:inside?1.4:2;
+ if(sunLight){sunLight.intensity=night ? .35 : inside ? 1.1 : 2.3;sunLight.color.set(night?'#7894d8':'#ffffff')}
+ if(ambientLight)ambientLight.intensity=night ? .55 : inside ? 1.4 : 2;
  world.clear();
  if(inside){
   box(world,0,-.3,0,24,.5,24,'#8b684d');
