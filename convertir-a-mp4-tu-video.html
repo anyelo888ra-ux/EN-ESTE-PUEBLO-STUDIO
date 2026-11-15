@@ -52,6 +52,9 @@ async function loadEngine(){
  ffmpeg.on('progress',({progress})=>{$('progress').hidden=false;$('progress').value=Math.max(0,Math.min(100,Math.round(progress*100)))});
  const base='https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/umd';
  await ffmpeg.load({
+  // El worker principal se sirve desde GitHub Pages (mismo origen).
+  // Ese archivo puente importa el worker oficial de FFmpeg desde jsDelivr.
+  classWorkerURL:new URL('./ffmpeg-worker.js',window.location.href).href,
   coreURL:await toBlobURL(base+'/ffmpeg-core.js','text/javascript'),
   wasmURL:await toBlobURL(base+'/ffmpeg-core.wasm','application/wasm')
  });
