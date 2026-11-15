@@ -32,3 +32,16 @@ Si el navegador bloquea módulos al abrir `file://`, inicia un servidor local en
 
 ## Siguiente etapa
 Implementar un compositor de vídeo que dibuje subtítulos dentro del canvas, mezcle audio generado y permita MP4 mediante un proceso de conversión local o backend.
+
+
+## v1.1 — Exportación y conversión
+- La grabación integra el título y los subtítulos dentro del vídeo (no dependen de la interfaz del editor).
+- Tamaños de salida exactos: vertical 720×1280 / 1080×1920, horizontal 1280×720 / 1920×1080 y cuadrado 720×720 / 1080×1080.
+- El vídeo se graba como WebM desde el navegador.
+- La página `convertir-a-mp4-tu-video.html` convierte WebM a MP4 H.264 con FFmpeg WebAssembly en el propio navegador.
+- La conversión carga un motor de varias decenas de MB y puede tardar bastante en equipos con poca RAM o CPU.
+- La voz generada por SpeechSynthesis todavía no se incorpora al audio del vídeo exportado.
+- La cámara ahora puede seguir al personaje del diálogo y los NPC añadidos manualmente se conservan al regenerar el reparto.
+
+## Conversor
+Abre `convertir-a-mp4-tu-video.html` desde GitHub Pages. Selecciona un WebM, pulsa Convertir y luego Descargar MP4. La primera vez requiere conexión para descargar FFmpeg desde jsDelivr.
