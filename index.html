@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>EN ESTE PUEBLO STUDIO — v1.3</title>
+<title>EN ESTE PUEBLO STUDIO — v1.4</title>
 <link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <style>
 :root{color-scheme:dark;--bg:#080d18;--panel:#111a2b;--panel2:#17233a;--line:#263754;--text:#eef4ff;--muted:#9aabc6;--cyan:#54d7ef;--purple:#a78bfa;--green:#70e1a1}
@@ -13,7 +13,7 @@ main{max-width:1500px;margin:auto;padding:18px;display:grid;grid-template-column
 .panel{background:linear-gradient(160deg,var(--panel),#0d1524);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
 h2{font-size:16px;margin:0 0 12px}h3{font-size:13px;color:var(--cyan);margin:17px 0 8px;text-transform:uppercase;letter-spacing:.08em}
 label{display:block;color:var(--muted);font-size:12px;margin:9px 0 5px}input,textarea,select{width:100%;background:#091221;border:1px solid var(--line);border-radius:9px;color:var(--text);padding:10px;font:inherit;outline:none}textarea{min-height:145px;resize:vertical}input:focus,textarea:focus,select:focus{border-color:var(--cyan)}
-button,.filebtn{border:1px solid #3b577b;background:#1b3150;color:white;padding:9px 12px;border-radius:9px;cursor:pointer;font-weight:650}button:hover,.filebtn:hover{border-color:var(--cyan);filter:brightness(1.12)}button.primary{background:linear-gradient(100deg,#087f9a,#5750a9);border:0}button.good{background:#14563d;border-color:#247c5a}button:disabled{opacity:.45;cursor:not-allowed}
+button,.filebtn{border:1px solid #3b577b;background:#1b3150;color:white;padding:9px 12px;border-radius:9px;cursor:pointer;font-weight:650}button:hover,.filebtn:hover{border-color:var(--cyan);filter:brightness(1.12);transform:translateY(-1px)}button:active{transform:translateY(0)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}input[type=range]{accent-color:var(--cyan);padding:6px 0}button.primary{background:linear-gradient(100deg,#087f9a,#5750a9);border:0}button.good{background:#14563d;border-color:#247c5a}button:disabled{opacity:.45;cursor:not-allowed}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.row>*{flex:1}.row button{flex:0 0 auto}.small{font-size:11px;color:var(--muted)}.muted{color:var(--muted)}.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.tabs button{font-size:12px;padding:7px 10px}.tabs button.active{border-color:var(--cyan);color:var(--cyan)}
 #viewport{height:480px;min-height:300px;position:relative;overflow:hidden;border-radius:13px;background:#93c9e8;border:1px solid var(--line)}#scene{width:100%;height:100%;display:block}.overlay{position:absolute;inset:auto 0 0;padding:18px 14px 15px;text-align:center;background:linear-gradient(transparent,#000b 40%,#000d);pointer-events:none}.sub{display:inline-block;background:#080b13dd;border:1px solid #ffffff44;border-radius:9px;padding:7px 14px;font-size:18px;font-weight:800;text-shadow:0 2px 4px #000;max-width:90%}.scene-title{position:absolute;top:12px;left:12px;background:#07101dcc;border:1px solid #ffffff33;border-radius:9px;padding:7px 10px;font-weight:800}
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}.char{background:#0a1424;border:1px solid var(--line);border-radius:10px;padding:10px}.char b{display:block}.pill{display:inline-block;font-size:10px;color:#a9eaff;background:#12364a;padding:3px 6px;border-radius:20px;margin-top:5px}
@@ -23,7 +23,7 @@ hr{border:0;border-top:1px solid var(--line);margin:14px 0}.hidden{display:none!
 </style>
 </head>
 <body>
-<header><div><div class="brand">EN ESTE PUEBLO <span>STUDIO</span></div><div class="tag">Creador de historias 3D · v1.3</div></div><div class="row" style="flex:0 0 auto"><a href="./convertir-a-mp4-tu-video.html" style="color:#54d7ef;text-decoration:none;font-weight:700;padding:8px 10px;border:1px solid #263754;border-radius:9px">Convertir WebM a MP4</a><button id="saveProject">Guardar proyecto</button><button id="loadProject">Abrir proyecto</button><input id="projectFile" type="file" accept=".json" class="hidden"></div></header>
+<header><div><div class="brand">EN ESTE PUEBLO <span>STUDIO</span></div><div class="tag">Creador de historias 3D · v1.4</div></div><div class="row" style="flex:0 0 auto"><a href="./convertir-a-mp4-tu-video.html" style="color:#54d7ef;text-decoration:none;font-weight:700;padding:8px 10px;border:1px solid #263754;border-radius:9px">Convertir WebM a MP4</a><button id="saveProject">Guardar proyecto</button><button id="loadProject">Abrir proyecto</button><input id="projectFile" type="file" accept=".json" class="hidden"></div></header>
 <main>
 <aside class="panel">
 <div class="tabs"><button class="active" data-tab="story">Historia</button><button data-tab="people">Personajes</button><button data-tab="voice">Voces</button><button data-tab="export">Exportar</button></div>
